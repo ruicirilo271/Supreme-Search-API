@@ -1,35 +1,50 @@
-# Supreme Search API 1.1
+# Supreme Search WEB 4K — Render
 
-Backend FastAPI preparado para Render.
+Versão 2.0 do **Supreme Search API**, agora com uma interface web completa feita para abrir diretamente numa Android TV/Google TV ou computador.
 
-## Correções desta versão
+## O que muda
 
-- conflito `beautifulsoup4` / `thepiratebay-api` resolvido;
-- `/` passa a mostrar estado e endpoints em vez de `Not Found`;
-- `/health` inclui versão e fontes;
-- `/sources` lista as fontes disponíveis;
-- pesquisa normaliza a query e valida fontes;
-- cache de pesquisas;
-- deduplicação por infohash/magnet;
-- resultados ordenados por seeders;
-- pesquisa 1337x mais leve no Chromium (bloqueia imagens/media/fontes);
-- limite por fonte para evitar timeouts no Render Free;
-- fallback de mirror para o wrapper PirateBay quando possível;
-- Docker instala apenas Chromium, não todos os browsers do Playwright.
+- `/` deixa de mostrar JSON e passa a abrir a interface **Supreme Search 4K**;
+- design cinematográfico responsivo para 1080p/4K;
+- navegação por comando/teclado com setas e tecla OK/Enter;
+- pesquisa nas fontes configuradas no backend;
+- filtros de fontes e quantidade de resultados;
+- ordenação pelo backend por seeders;
+- nome, fonte, seeders, leechers, tamanho, categoria e data;
+- botão **ABRIR MAGNET** para entregar o link à aplicação de downloads instalada na TV;
+- botão **COPIAR** como alternativa;
+- histórico de pesquisas guardado apenas no navegador da TV;
+- botão de ecrã inteiro;
+- estado da API em tempo real;
+- skeleton/loading e mensagens de erro pensadas para o plano gratuito do Render;
+- `/api`, `/health`, `/sources`, `/search` e `/docs` continuam disponíveis.
 
-## Render
+## Publicar no Render
 
-Se este diretório for a raiz do repositório no GitHub, usa `render.yaml` ou cria um Web Service com runtime Docker.
+Este ZIP pode substituir o conteúdo do repositório atual do backend.
 
-Depois do deploy:
+Se o Render está ligado ao GitHub e `Auto Deploy` está ativo, basta fazer commit/push destas alterações. Como o projeto usa Docker, mantém:
 
-- raiz: `https://TEU-SERVICO.onrender.com/`
-- health: `https://TEU-SERVICO.onrender.com/health`
-- documentação: `https://TEU-SERVICO.onrender.com/docs`
-- teste: `https://TEU-SERVICO.onrender.com/search?q=ubuntu&sources=1337x,piratebay&limit=5`
+- Runtime: Docker
+- Health Check Path: `/health`
 
-A aplicação Android TV desta suite já vem configurada para:
+O `render.yaml` já está incluído.
+
+Depois do deploy, abre simplesmente:
 
 `https://supreme-search-api.onrender.com`
 
-Se mudares o nome do serviço Render, podes alterar a URL dentro da própria app.
+Na TV, guarda essa página nos favoritos. Não é necessário instalar a antiga app Android de pesquisa.
+
+## Endpoints
+
+- Interface TV: `/`
+- Informação da API: `/api`
+- Estado: `/health`
+- Fontes: `/sources`
+- Pesquisa JSON: `/search?q=ubuntu&sources=1337x,piratebay&limit=12`
+- Swagger: `/docs`
+
+## Nota
+
+Usa apenas torrents e conteúdos que tenhas autorização para obter.

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07080d" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="Supreme Search — pesquisa otimizada para Android TV 4K." />
+  <title>Supreme Search 4K</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+  <div class="noise"></div>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand focusable" href="/" aria-label="Supreme Search — início" data-tv-focus>
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" role="img"><path d="M10 41 20 19l12 13 12-13 10 22-22 13L10 41Z"/><path d="M18 44h28"/></svg>
+        </span>
+        <span class="brand-copy">
+          <strong>SUPREME</strong>
+          <small>SEARCH 4K</small>
+        </span>
+      </a>
+
+      <div class="top-actions">
+        <div class="status-pill" id="apiStatus" aria-live="polite">
+          <span class="status-dot"></span>
+          <span>API a verificar</span>
+        </div>
+        <button class="icon-button focusable" id="fullscreenBtn" type="button" aria-label="Ecrã inteiro" title="Ecrã inteiro" data-tv-focus>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3H3v4M17 3h4v4M7 21H3v-4M17 21h4v-4"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow"><span></span> PESQUISA DIRETA NA TV</div>
+        <h1>Encontra. Escolhe.<br><em>Abre o magnet.</em></h1>
+        <p class="hero-copy">Uma interface cinematográfica feita para ecrãs 4K, comando da TV e pesquisa rápida em várias fontes.</p>
+
+        <form class="search-panel" id="searchForm" autocomplete="off">
+          <div class="search-box-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.7-3.7"/></svg>
+            <input
+              class="search-input focusable"
+              id="searchInput"
+              name="q"
+              type="search"
+              minlength="2"
+              maxlength="160"
+              placeholder="Pesquisar título, série, episódio, ficheiro…"
+              spellcheck="false"
+              enterkeyhint="search"
+              aria-label="Pesquisar"
+              data-tv-focus
+            />
+            <button class="clear-button focusable" id="clearBtn" type="button" aria-label="Limpar pesquisa" title="Limpar" data-tv-focus>×</button>
+          </div>
+
+          <button class="primary-button focusable" id="searchBtn" type="submit" data-tv-focus>
+            <span>PESQUISAR</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </form>
+
+        <div class="toolbar">
+          <div class="source-group" aria-label="Fontes de pesquisa">
+            <span class="toolbar-label">FONTES</span>
+            <label class="source-toggle focusable" tabindex="0" data-tv-focus>
+              <input id="source1337" type="checkbox" checked />
+              <span>1337x</span>
+            </label>
+            <label class="source-toggle focusable" tabindex="0" data-tv-focus>
+              <input id="sourceTpb" type="checkbox" checked />
+              <span>PirateBay</span>
+            </label>
+          </div>
+
+          <div class="limit-group">
+            <label class="toolbar-label" for="limitSelect">RESULTADOS</label>
+            <select class="limit-select focusable" id="limitSelect" data-tv-focus>
+              <option value="8">8</option>
+              <option value="12" selected>12</option>
+              <option value="20">20</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="recent-wrap" id="recentWrap" hidden>
+          <span class="toolbar-label">RECENTES</span>
+          <div class="recent-list" id="recentList"></div>
+          <button class="text-button focusable" id="clearHistoryBtn" type="button" data-tv-focus>Limpar</button>
+        </div>
+      </section>
+
+      <section class="results-section" aria-live="polite">
+        <div class="results-head">
+          <div>
+            <p class="section-kicker">RESULTADOS</p>
+            <h2 id="resultsTitle">Pronto para pesquisar</h2>
+          </div>
+          <div class="result-meta" id="resultMeta"></div>
+        </div>
+
+        <div class="welcome-card" id="welcomeCard">
+          <div class="welcome-icon">
+            <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="27" cy="27" r="17"/><path d="m40 40 15 15"/><path d="M18 27h18M27 18v18"/></svg>
+          </div>
+          <div>
+            <h3>Pesquisa desenhada para a televisão</h3>
+            <p>Escreve o que procuras e usa o comando para navegar. Ao escolheres um resultado, podes abrir o magnet na aplicação de downloads instalada na TV.</p>
+          </div>
+          <div class="key-hints">
+            <span><kbd>↑ ↓ ← →</kbd> navegar</span>
+            <span><kbd>OK</kbd> selecionar</span>
+            <span><kbd>/</kbd> pesquisar</span>
+          </div>
+        </div>
+
+        <div class="skeleton-grid" id="skeletonGrid" hidden aria-hidden="true"></div>
+        <div class="results-grid" id="resultsGrid"></div>
+
+        <div class="empty-state" id="emptyState" hidden>
+          <div class="empty-orb"></div>
+          <h3>Nenhum resultado encontrado</h3>
+          <p>Tenta alterar os termos da pesquisa ou ativar outra fonte.</p>
+        </div>
+
+        <div class="error-state" id="errorState" hidden>
+          <div class="error-symbol">!</div>
+          <h3>Não foi possível concluir a pesquisa</h3>
+          <p id="errorMessage">Tenta novamente dentro de alguns segundos.</p>
+          <button class="secondary-button focusable" id="retryBtn" type="button" data-tv-focus>TENTAR NOVAMENTE</button>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Supreme Search 4K</span>
+      <span class="footer-dot">•</span>
+      <span id="versionText">API</span>
+      <span class="footer-spacer"></span>
+      <span>Usa apenas conteúdo que tenhas autorização para obter.</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

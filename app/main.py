@@ -10,9 +10,11 @@ from urllib.parse import parse_qs, quote, urlparse
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "2.0.0"
 MAX_LIMIT = 20
 MAX_PER_SOURCE = max(1, min(12, int(os.getenv("MAX_PER_SOURCE", "8"))))
 CACHE_TTL = max(30, int(os.getenv("CACHE_TTL_SECONDS", "300")))
@@ -304,12 +306,22 @@ def search_1337x(query: str, limit: int) -> list[SearchResult]:
     return results
 
 
-@app.get("/")
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/", include_in_schema=False)
 def root():
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"), media_type="text/html")
+
+
+@app.get("/api")
+def api_info():
     return {
         "ok": True,
         "service": "Supreme Search API",
         "version": APP_VERSION,
+        "web": "/",
         "health": "/health",
         "search": "/search?q=ubuntu&sources=1337x,piratebay&limit=8",
         "docs": "/docs",
