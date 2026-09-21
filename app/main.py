@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.2.0"
 MAX_LIMIT = 20
 MAX_PER_SOURCE = max(1, min(12, int(os.getenv("MAX_PER_SOURCE", "8"))))
 CACHE_TTL = max(30, int(os.getenv("CACHE_TTL_SECONDS", "300")))

@@ -55,3 +55,12 @@ Usa apenas torrents e conteúdos que tenhas autorização para obter.
 A pesquisa 1337x deixou de depender do Playwright. Usa agora `1337x==2.1.1`/`py1337x`, pesquisa por categorias (TV, Movies, Anime, etc.) e tenta vários domínios. O próprio projeto py1337x documenta que a pesquisa genérica sem categoria pode devolver resultados vazios após uma alteração recente no 1337x.
 
 Teste depois do deploy: `/diagnostics/1337x?q=ubuntu`.
+
+## Correções 2.2.0
+
+- corrige o bug visual em que **Nenhum resultado encontrado** e **Não foi possível concluir a pesquisa** apareciam mesmo quando já existiam resultados;
+- adiciona uma regra global para respeitar corretamente o atributo HTML `hidden`;
+- os cartões de carregamento deixam de parecer espaços vazios e passam a explicar o que está a acontecer;
+- o resumo da pesquisa mostra quantos resultados vieram de cada fonte;
+- estados de carregamento, vazio e erro passam a ser mutuamente exclusivos;
+- mantém a correção 1337x com pesquisa por categorias e fallback de domínios.

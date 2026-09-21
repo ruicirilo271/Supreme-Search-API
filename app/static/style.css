@@ -24,6 +24,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { background: var(--bg); scroll-behavior: smooth; }
 body {
   margin: 0;
@@ -127,7 +128,11 @@ kbd { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line-strong)
 .magnet-button svg { width: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .copy-button { min-width: 104px; background: rgba(255,255,255,.045); color: #a9afc0; padding: 0 14px; font-size: 11px; }
 
-.skeleton-card { height: 208px; border-radius: var(--radius-lg); border: 1px solid var(--line); background: linear-gradient(110deg, rgba(255,255,255,.025) 20%, rgba(255,255,255,.065) 35%, rgba(255,255,255,.025) 50%); background-size: 280% 100%; animation: shimmer 1.35s linear infinite; }
+.skeleton-card { position: relative; min-height: 208px; border-radius: var(--radius-lg); border: 1px solid var(--line); background: linear-gradient(110deg, rgba(255,255,255,.025) 20%, rgba(255,255,255,.065) 35%, rgba(255,255,255,.025) 50%); background-size: 280% 100%; animation: shimmer 1.35s linear infinite; overflow: hidden; display: flex; align-items: flex-end; padding: 22px; }
+.skeleton-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(7,8,13,.78)); pointer-events: none; }
+.skeleton-copy { position: relative; z-index: 1; display: grid; gap: 5px; }
+.skeleton-copy strong { color: #e6e0f4; font-size: 14px; letter-spacing: .02em; }
+.skeleton-copy span { color: #83899b; font-size: 12px; }
 @keyframes shimmer { to { background-position-x: -180%; } }
 
 .empty-state, .error-state { margin-top: 26px; min-height: 310px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: rgba(13,15,23,.64); display: grid; place-items: center; align-content: center; text-align: center; padding: 40px; }

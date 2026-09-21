@@ -159,14 +159,34 @@
     searchBtn.disabled = loading;
     searchBtn.querySelector("span").textContent = loading ? "A PESQUISAR…" : "PESQUISAR";
     skeletonGrid.hidden = !loading;
-    if (loading) {
+    if (!loading) {
       skeletonGrid.innerHTML = "";
-      for (let i = 0; i < 6; i++) {
-        const sk = document.createElement("div");
-        sk.className = "skeleton-card";
-        skeletonGrid.appendChild(sk);
-      }
+      return;
     }
+
+    const steps = [
+      ["A consultar 1337x…", "A procurar resultados e magnets"],
+      ["A consultar PirateBay…", "A procurar resultados e magnets"],
+      ["A reunir resultados…", "A juntar as fontes disponíveis"],
+      ["A validar magnets…", "A remover resultados inválidos"],
+      ["A ordenar por seeders…", "A destacar os resultados mais ativos"],
+      ["Quase pronto…", "A preparar os cartões para a TV"],
+    ];
+
+    skeletonGrid.innerHTML = "";
+    steps.forEach(([title, subtitle]) => {
+      const sk = document.createElement("div");
+      sk.className = "skeleton-card";
+      const copy = document.createElement("div");
+      copy.className = "skeleton-copy";
+      const strong = document.createElement("strong");
+      strong.textContent = title;
+      const span = document.createElement("span");
+      span.textContent = subtitle;
+      copy.append(strong, span);
+      sk.appendChild(copy);
+      skeletonGrid.appendChild(sk);
+    });
   }
 
   function hideStates() {
@@ -243,8 +263,16 @@
 
       setLoading(false);
       resultsTitle.textContent = `Resultados para “${query}”`;
-      resultMeta.textContent = `${data.length} resultado${data.length === 1 ? "" : "s"} • ${elapsed}s`;
+      const bySource = data.reduce((acc, item) => {
+        const key = sourceLabel(item.source);
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+      const sourceSummary = Object.entries(bySource).map(([name, count]) => `${name}: ${count}`).join(" • ");
+      resultMeta.textContent = `${data.length} resultado${data.length === 1 ? "" : "s"}${sourceSummary ? ` • ${sourceSummary}` : ""} • ${elapsed}s`;
 
+      emptyState.hidden = true;
+      errorState.hidden = true;
       if (!data.length) {
         emptyState.hidden = false;
         return;
@@ -260,6 +288,9 @@
         errorMessage.textContent = err?.message || "Erro inesperado.";
       }
       setLoading(false);
+      resultsGrid.innerHTML = "";
+      emptyState.hidden = true;
+      welcomeCard.hidden = true;
       resultsTitle.textContent = "Pesquisa interrompida";
       resultMeta.textContent = "";
       errorState.hidden = false;
@@ -272,7 +303,7 @@
     if (activeController) activeController.abort();
     searchInput.value = "";
     resultsGrid.innerHTML = "";
-    skeletonGrid.hidden = true;
+    setLoading(false);
     emptyState.hidden = true;
     errorState.hidden = true;
     welcomeCard.hidden = false;
