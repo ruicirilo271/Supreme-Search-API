@@ -48,3 +48,10 @@ Na TV, guarda essa página nos favoritos. Não é necessário instalar a antiga 
 ## Nota
 
 Usa apenas torrents e conteúdos que tenhas autorização para obter.
+
+
+## Fix 2.1 — 1337x
+
+A pesquisa 1337x deixou de depender do Playwright. Usa agora `1337x==2.1.1`/`py1337x`, pesquisa por categorias (TV, Movies, Anime, etc.) e tenta vários domínios. O próprio projeto py1337x documenta que a pesquisa genérica sem categoria pode devolver resultados vazios após uma alteração recente no 1337x.
+
+Teste depois do deploy: `/diagnostics/1337x?q=ubuntu`.

@@ -1,25 +1,34 @@
-import html
 import logging
 import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Iterable
-from urllib.parse import parse_qs, quote, urlparse
+from urllib.parse import parse_qs, urlparse
 
-from bs4 import BeautifulSoup
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.1.0"
 MAX_LIMIT = 20
 MAX_PER_SOURCE = max(1, min(12, int(os.getenv("MAX_PER_SOURCE", "8"))))
 CACHE_TTL = max(30, int(os.getenv("CACHE_TTL_SECONDS", "300")))
-X1337_BASE_URL = os.getenv("X1337_BASE_URL", "https://www.1377x.to").rstrip("/")
 TPB_BASE_URL = os.getenv("TPB_BASE_URL", "").strip().rstrip("/")
+
+# 1337x changed generic search behaviour. The maintained py1337x wrapper
+# recommends category searches because generic .search() can return empty.
+_raw_1337x_urls = os.getenv(
+    "X1337_BASE_URLS",
+    "https://www.1337x.to,https://1337x.to,https://1337x.st,https://x1337x.ws,https://x1337x.eu,https://x1337x.cc",
+)
+X1337_BASE_URLS = [x.strip().rstrip("/") for x in _raw_1337x_urls.split(",") if x.strip()]
+if os.getenv("X1337_BASE_URL"):
+    preferred = os.getenv("X1337_BASE_URL", "").strip().rstrip("/")
+    if preferred:
+        X1337_BASE_URLS = [preferred] + [x for x in X1337_BASE_URLS if x != preferred]
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -30,7 +39,7 @@ logger = logging.getLogger("supreme-search")
 app = FastAPI(
     title="Supreme Search API",
     version=APP_VERSION,
-    description="Backend de pesquisa para a aplicação Supreme Search TV.",
+    description="Backend de pesquisa para Supreme Search 4K.",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -121,16 +130,13 @@ def _tpb_collect(client, query: str, limit: int) -> list[SearchResult]:
     torrents = list(getattr(response, "torrents", []) or [])[:limit]
     for item in torrents:
         try:
-            # Algumas versões do wrapper poderão já expor detalhes no resultado.
             magnet = str(getattr(item, "magnet_link", "") or "")
             details = item
             if not magnet.startswith("magnet:"):
                 details = client.detail(item.torrent_id)
                 magnet = str(getattr(details, "magnet_link", "") or "")
-
             if not magnet.startswith("magnet:"):
                 continue
-
             found.append(
                 SearchResult(
                     title=str(getattr(details, "title", None) or getattr(item, "title", "Unknown")),
@@ -148,7 +154,6 @@ def _tpb_collect(client, query: str, limit: int) -> list[SearchResult]:
 
 
 def search_piratebay(query: str, limit: int) -> list[SearchResult]:
-    """Pesquisa através do wrapper Python `thepiratebay-api`."""
     try:
         from thepiratebay_api import TorrentClient
     except Exception as exc:
@@ -165,7 +170,6 @@ def search_piratebay(query: str, limit: int) -> list[SearchResult]:
     except Exception as first_error:
         logger.warning("PirateBay primary search failed: %s", first_error)
 
-    # Se não foi definida uma base URL, tenta um mirror indicado pelo próprio wrapper.
     if not TPB_BASE_URL:
         try:
             with TorrentClient(timeout=15) as probe:
@@ -181,129 +185,114 @@ def search_piratebay(query: str, limit: int) -> list[SearchResult]:
     return []
 
 
-def _find_1337x_rows(soup: BeautifulSoup):
-    table = soup.find("table", class_=lambda c: c and "table-list" in c)
-    if not table:
-        return []
-    rows = table.find_all("tr")
-    return rows[1:] if len(rows) > 1 else []
+def _1337x_categories():
+    from py1337x import category
+    return [
+        category.TV,
+        category.MOVIES,
+        category.ANIME,
+        category.DOCUMENTARIES,
+        category.APPS,
+        category.GAMES,
+        category.MUSIC,
+        category.OTHER,
+    ]
 
 
-def _block_heavy_resources(route):
-    try:
-        resource_type = route.request.resource_type
-        if resource_type in {"image", "media", "font"}:
-            route.abort()
-        else:
-            route.continue_()
-    except Exception:
+def _1337x_candidates(client, query: str, limit: int):
+    candidates = {}
+    target = max(limit * 2, 12)
+
+    for cat in _1337x_categories():
         try:
-            route.continue_()
-        except Exception:
-            pass
+            response = client.search(query, page=1, category=cat, sort_by="seeders", order="desc")
+            items = list(getattr(response, "items", []) or [])
+            logger.info("1337x category %s returned %d listing(s)", cat, len(items))
+            for item in items:
+                tid = str(getattr(item, "torrent_id", "") or "")
+                if not tid:
+                    continue
+                current = candidates.get(tid)
+                if current is None or _to_int(getattr(item, "seeders", 0)) > _to_int(getattr(current, "seeders", 0)):
+                    candidates[tid] = item
+            if len(candidates) >= target:
+                break
+        except Exception as exc:
+            logger.debug("1337x category %s failed: %s", cat, exc)
+
+    return sorted(
+        candidates.values(),
+        key=lambda item: _to_int(getattr(item, "seeders", 0)),
+        reverse=True,
+    )[:target]
+
+
+def _1337x_detail(base_url: str, item):
+    from py1337x import Py1337x
+
+    torrent_id = str(getattr(item, "torrent_id", "") or "")
+    if not torrent_id:
+        return None
+
+    client = Py1337x(base_url=base_url, requests_kwargs={"timeout": 15})
+    info = client.info(torrent_id=torrent_id)
+    magnet = str(getattr(info, "magnet_link", "") or "")
+    if not magnet.startswith("magnet:"):
+        return None
+
+    return SearchResult(
+        title=str(getattr(info, "name", None) or getattr(item, "name", "Unknown")),
+        source="1337x",
+        size=str(getattr(info, "size", None) or getattr(item, "size", "?") or "?"),
+        seeders=_to_int(getattr(info, "seeders", None) or getattr(item, "seeders", 0)),
+        leechers=_to_int(getattr(info, "leechers", None) or getattr(item, "leechers", 0)),
+        magnet=magnet,
+        date=str(getattr(info, "date_uploaded", None) or getattr(item, "time", "") or ""),
+        category=str(getattr(info, "category", "") or ""),
+    )
 
 
 def search_1337x(query: str, limit: int) -> list[SearchResult]:
-    """Pesquisa o mirror 1337x configurado usando Chromium/Playwright."""
+    """Category-aware 1337x search with multiple-domain fallback."""
     try:
-        from playwright.sync_api import sync_playwright
+        from py1337x import Py1337x
     except Exception as exc:
-        logger.warning("Playwright unavailable: %s", exc)
+        logger.warning("py1337x unavailable: %s", exc)
         return []
 
-    user_agent = (
-        "Mozilla/5.0 (Linux; Android 11; TV) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/153.0 Safari/537.36"
-    )
-    results: list[SearchResult] = []
+    for base_url in X1337_BASE_URLS:
+        try:
+            logger.info("1337x trying %s", base_url)
+            client = Py1337x(base_url=base_url, requests_kwargs={"timeout": 15})
+            candidates = _1337x_candidates(client, query, limit)
+            if not candidates:
+                logger.warning("1337x %s returned no category listings", base_url)
+                continue
 
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-            )
-            try:
-                context = browser.new_context(user_agent=user_agent)
-                context.route("**/*", _block_heavy_resources)
-                page = context.new_page()
-                search_url = f"{X1337_BASE_URL}/search/{quote(query, safe='')}/1/"
-                page.goto(search_url, wait_until="domcontentloaded", timeout=25000)
-                soup = BeautifulSoup(page.content(), "html.parser")
-
-                raw_rows = []
-                for row in _find_1337x_rows(soup)[:limit]:
-                    cells = row.find_all("td")
-                    if len(cells) < 5:
-                        continue
-                    anchors = cells[0].find_all("a", href=True)
-                    if not anchors:
-                        continue
-
-                    detail_href = ""
-                    for anchor in reversed(anchors):
-                        href = anchor.get("href", "")
-                        if href.startswith("/torrent/"):
-                            detail_href = href
-                            break
-                    if not detail_href:
-                        detail_href = anchors[-1].get("href", "")
-                    if not detail_href:
-                        continue
-
-                    raw_rows.append(
-                        {
-                            "title": cells[0].get_text(" ", strip=True),
-                            "seeders": _to_int(cells[1].get_text(strip=True)),
-                            "leechers": _to_int(cells[2].get_text(strip=True)),
-                            "date": cells[3].get_text(" ", strip=True),
-                            "size": cells[4].get_text(" ", strip=True),
-                            "detail": detail_href,
-                        }
-                    )
-
-                detail_page = context.new_page()
-                for row in raw_rows:
+            results: list[SearchResult] = []
+            with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as pool:
+                futures = [pool.submit(_1337x_detail, base_url, item) for item in candidates]
+                for future in as_completed(futures):
                     try:
-                        detail_url = row["detail"]
-                        if detail_url.startswith("/"):
-                            detail_url = X1337_BASE_URL + detail_url
-                        detail_page.goto(detail_url, wait_until="domcontentloaded", timeout=15000)
-                        detail_soup = BeautifulSoup(detail_page.content(), "html.parser")
-                        magnet_tag = detail_soup.find("a", href=lambda h: h and h.startswith("magnet:"))
-                        if not magnet_tag:
-                            continue
-                        magnet = html.unescape(magnet_tag.get("href", ""))
-                        if not magnet.startswith("magnet:"):
-                            continue
-
-                        category = ""
-                        category_link = detail_soup.find("a", href=lambda h: h and "/cat/" in h)
-                        if category_link:
-                            category = category_link.get_text(" ", strip=True)
-
-                        results.append(
-                            SearchResult(
-                                title=row["title"],
-                                source="1337x",
-                                size=row["size"],
-                                seeders=row["seeders"],
-                                leechers=row["leechers"],
-                                magnet=magnet,
-                                date=row["date"],
-                                category=category,
-                            )
-                        )
+                        result = future.result()
+                        if result:
+                            results.append(result)
+                            if len(results) >= limit:
+                                break
                     except Exception as exc:
-                        logger.debug("1337x detail failed: %s", exc)
-                context.close()
-            finally:
-                browser.close()
-    except Exception as exc:
-        logger.warning("1337x search failed: %s", exc)
-        return []
+                        logger.debug("1337x detail failed on %s: %s", base_url, exc)
 
-    return results
+            if results:
+                results.sort(key=lambda r: r.seeders, reverse=True)
+                logger.info("1337x %s returned %d magnet result(s)", base_url, len(results))
+                return results[:limit]
+
+            logger.warning("1337x %s listings found but no magnets resolved", base_url)
+        except Exception as exc:
+            logger.warning("1337x %s failed: %s", base_url, exc)
+
+    logger.warning("1337x exhausted all configured domains for %r", query)
+    return []
 
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
@@ -335,6 +324,7 @@ def health():
         "service": "Supreme Search API",
         "version": APP_VERSION,
         "sources": ["1337x", "piratebay"],
+        "search_1337x": "py1337x category search + domain fallback",
     }
 
 
@@ -342,9 +332,29 @@ def health():
 def sources():
     return {
         "sources": [
-            {"id": "1337x", "name": "1337x", "enabled": True},
+            {
+                "id": "1337x",
+                "name": "1337x",
+                "enabled": True,
+                "strategy": "category-search",
+                "domains": X1337_BASE_URLS,
+            },
             {"id": "piratebay", "name": "PirateBay", "enabled": True},
         ]
+    }
+
+
+@app.get("/diagnostics/1337x")
+def diagnostics_1337x(q: str = Query("ubuntu", min_length=2, max_length=80)):
+    started = time.time()
+    results = search_1337x(_clean_query(q), 3)
+    return {
+        "ok": bool(results),
+        "query": q,
+        "count": len(results),
+        "seconds": round(time.time() - started, 2),
+        "domains": X1337_BASE_URLS,
+        "results": results,
     }
 
 
