@@ -12,9 +12,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-APP_VERSION = "2.2.0"
-MAX_LIMIT = 20
-MAX_PER_SOURCE = max(1, min(12, int(os.getenv("MAX_PER_SOURCE", "8"))))
+APP_VERSION = "2.3.0"
+MAX_LIMIT = 50
+MAX_PER_SOURCE = max(1, min(50, int(os.getenv("MAX_PER_SOURCE", "50"))))
 CACHE_TTL = max(30, int(os.getenv("CACHE_TTL_SECONDS", "300")))
 TPB_BASE_URL = os.getenv("TPB_BASE_URL", "").strip().rstrip("/")
 
@@ -201,7 +201,7 @@ def _1337x_categories():
 
 def _1337x_candidates(client, query: str, limit: int):
     candidates = {}
-    target = max(limit * 2, 12)
+    target = max(limit, 12)
 
     for cat in _1337x_categories():
         try:
@@ -270,7 +270,7 @@ def search_1337x(query: str, limit: int) -> list[SearchResult]:
                 continue
 
             results: list[SearchResult] = []
-            with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as pool:
+            with ThreadPoolExecutor(max_workers=min(8, len(candidates))) as pool:
                 futures = [pool.submit(_1337x_detail, base_url, item) for item in candidates]
                 for future in as_completed(futures):
                     try:

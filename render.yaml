@@ -10,6 +10,6 @@ services:
       - key: CACHE_TTL_SECONDS
         value: "300"
       - key: MAX_PER_SOURCE
-        value: "8"
+        value: "50"
       - key: LOG_LEVEL
         value: INFO

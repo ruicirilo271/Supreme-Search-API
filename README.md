@@ -56,7 +56,7 @@ A pesquisa 1337x deixou de depender do Playwright. Usa agora `1337x==2.1.1`/`py1
 
 Teste depois do deploy: `/diagnostics/1337x?q=ubuntu`.
 
-## Correções 2.2.0
+## Correções 2.3.0
 
 - corrige o bug visual em que **Nenhum resultado encontrado** e **Não foi possível concluir a pesquisa** apareciam mesmo quando já existiam resultados;
 - adiciona uma regra global para respeitar corretamente o atributo HTML `hidden`;
@@ -64,3 +64,13 @@ Teste depois do deploy: `/diagnostics/1337x?q=ubuntu`.
 - o resumo da pesquisa mostra quantos resultados vieram de cada fonte;
 - estados de carregamento, vazio e erro passam a ser mutuamente exclusivos;
 - mantém a correção 1337x com pesquisa por categorias e fallback de domínios.
+
+
+## Versão 2.3.0 — até 50 resultados
+
+- limite máximo do backend aumentado de 20 para 50;
+- seletor da página agora oferece 8, 12, 20, 30, 40 e 50 resultados;
+- 50 resultados ficam selecionados por defeito;
+- limite por fonte aumentado para 50;
+- timeout da interface aumentado automaticamente para pesquisas grandes no Render;
+- concorrência do 1337x ajustada para acelerar a resolução dos magnet links.

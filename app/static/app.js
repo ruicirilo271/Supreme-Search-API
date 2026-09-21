@@ -255,7 +255,9 @@
     setLoading(true);
 
     try {
-      timer = setTimeout(() => activeController.abort(), 70000);
+      const requestedLimit = Number(limitSelect.value) || 12;
+      const timeoutMs = requestedLimit >= 50 ? 150000 : requestedLimit >= 30 ? 120000 : 70000;
+      timer = setTimeout(() => activeController.abort(), timeoutMs);
       const res = await fetch(`/search?${params.toString()}`, { signal: activeController.signal, cache: "no-store" });
       const elapsed = ((performance.now() - started) / 1000).toFixed(1);
       const data = await res.json();
